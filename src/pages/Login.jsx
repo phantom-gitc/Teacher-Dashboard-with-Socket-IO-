@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AuthCard from "@/components/AuthCard";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store";
 import { MOCK_USERS, MOCK_JWT } from "@/lib/constants";
 
 // ── Zod validation schema for Login ──
@@ -17,7 +17,7 @@ const loginSchema = z.object({
 
 const Login = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, login } = useAuth();
+  const { user, isAuthenticated, login } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
 

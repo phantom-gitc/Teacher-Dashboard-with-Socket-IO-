@@ -1,7 +1,8 @@
 import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { mockUser, mockAssignments, mockNotifications } from "@/lib/mockData";
+import { mockUser } from "@/lib/mockData";
 import { formatDate } from "@/lib/utils";
+import { useDashboardStore } from "@/store";
 import { ClipboardList, FileText, BrainCircuit, MessageCircle, Calendar, Bell } from "lucide-react";
 
 const statCards = [
@@ -12,8 +13,10 @@ const statCards = [
 ];
 
 const Dashboard = () => {
-  const pendingAssignments = mockAssignments.filter((a) => a.status === "Pending").slice(0, 3);
-  const recentNotifications = mockNotifications.slice(0, 4);
+  const { assignments, notifications, unreadCount } = useDashboardStore();
+
+  const pendingAssignments = assignments.filter((a) => a.status === "Pending").slice(0, 3);
+  const recentNotifications = notifications.slice(0, 4);
 
   return (
     <DashboardLayout title="Dashboard">
@@ -31,7 +34,7 @@ const Dashboard = () => {
               {mockUser.name} 👋
             </h1>
             <p className="text-[#2a1a0e]/70 text-sm">
-              You have {pendingAssignments.length} pending assignments and {mockNotifications.filter(n => n.unread).length} new messages.
+              You have {pendingAssignments.length} pending assignments and {unreadCount} new messages.
             </p>
           </div>
         </div>

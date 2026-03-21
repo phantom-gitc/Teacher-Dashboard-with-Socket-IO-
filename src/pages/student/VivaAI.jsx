@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
+import { useVivaStore } from "@/store";
 import { Mic, Brain, Shield, Volume2, MicOff, PhoneOff, Award, Trophy, TrendingUp, AlertCircle, RefreshCw, Plus, Download, CheckCircle, ChevronDown, ChevronUp, FileText, Settings, Users } from "lucide-react";
 
 // Mock Data for Results
@@ -84,44 +85,50 @@ const teacherPresets = [
 ];
 
 const VivaAI = () => {
-  const [phase, setPhase] = useState("setup"); // setup, generating, ready, session, analyzing, results
-  const [subject, setSubject] = useState("Database Management System (DBMS)");
-  const [topic, setTopic] = useState("");
-  const [questionCount, setQuestionCount] = useState("10");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [studentName, setStudentName] = useState("Student");
-  const [selectedPreset, setSelectedPreset] = useState("friendly_mentor");
-  const [customDescription, setCustomDescription] = useState("");
-  
-  // Session State
-  const [isSpeaking, setIsSpeaking] = useState(null); // 'ai' or 'student'
-  const [isMuted, setIsMuted] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [conversationLog, setConversationLog] = useState([]);
-  const [expandedQuestion, setExpandedQuestion] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
+  // ── All state from useVivaStore ──
+  const {
+    phase, setPhase,
+    config, setConfig,
+    conversationLog, appendMessage, clearConversation,
+    analysisResult, setAnalysisResult,
+    isSpeaking, setIsSpeaking,
+    isMuted, toggleMute,
+    timer, incrementTimer, resetTimer,
+    expandedQuestion, setExpandedQuestion,
+    resetViva,
+  } = useVivaStore();
 
-  const teacher = teacherPresets.find(p => p.id === selectedPreset);
+  // Destructure config fields for convenience
+  const {
+    subject, topic, difficulty, questionCount,
+    studentName, selectedPreset, customDescription,
+  } = config;
 
-  // Auto-scroll log
+  const teacher = teacherPresets.find((p) => p.id === selectedPreset);
+
+  // ── Auto-scroll conversation log ──
   const messagesEndRef = useRef(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversationLog]);
 
-  // Timer logic
+  // ── Timer — interval lives in useRef, calls store action each tick ──
+  const timerRef = useRef(null);
   useEffect(() => {
-    let interval;
     if (phase === "session") {
-      interval = setInterval(() => setTimer(t => t + 1), 1000);
+      timerRef.current = setInterval(() => {
+        useVivaStore.getState().incrementTimer();
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(timerRef.current);
   }, [phase]);
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   const handleStartGenerating = () => {
@@ -134,30 +141,32 @@ const VivaAI = () => {
 
   const handleConnect = () => {
     setPhase("session");
-    setTimer(0);
-    setConversationLog([
-      { role: "ai", text: `Hello ${studentName}! I am ${teacher.name}. Let us begin your viva on ${subject}. Are you ready?` }
-    ]);
+    resetTimer();
+    clearConversation();
+    appendMessage({
+      role: "ai",
+      text: `Hello ${studentName}! I am ${teacher.name}. Let us begin your viva on ${subject}. Are you ready?`,
+    });
   };
 
   const handleEndSession = () => {
     setPhase("analyzing");
     // Mock Analysis Delay
     setTimeout(() => {
-      setAnalysis(mockAnalysis);
+      setAnalysisResult(mockAnalysis);
       setPhase("results");
     }, 3500);
   };
 
   // Mock UI functions to toggle speaking states (since no real backend)
   const simulateLiveEvent = (type) => {
-    if (type === 'ai-speak') {
-      setIsSpeaking('ai');
-      setConversationLog(prev => [...prev, { role: "ai", text: "Can you explain how normalization reduces data redundancy?" }]);
+    if (type === "ai-speak") {
+      setIsSpeaking("ai");
+      appendMessage({ role: "ai", text: "Can you explain how normalization reduces data redundancy?" });
       setTimeout(() => setIsSpeaking(null), 3000);
-    } else if (type === 'student-speak') {
-      setIsSpeaking('student');
-      setConversationLog(prev => [...prev, { role: "student", text: "Normalization organizes data into multiple related tables..." }]);
+    } else if (type === "student-speak") {
+      setIsSpeaking("student");
+      appendMessage({ role: "student", text: "Normalization organizes data into multiple related tables..." });
       setTimeout(() => setIsSpeaking(null), 3000);
     }
   };
@@ -198,7 +207,7 @@ const VivaAI = () => {
                     <label className="text-xs font-medium text-gray-600 mb-1.5 block">Subject <span className="text-red-500">*</span></label>
                     <select 
                       value={subject} 
-                      onChange={(e) => setSubject(e.target.value)}
+                      onChange={(e) => setConfig({ subject: e.target.value })}
                       className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-gray-50 w-full hover:bg-white transition-colors cursor-pointer"
                     >
                       {[
@@ -213,7 +222,7 @@ const VivaAI = () => {
                     <input 
                       type="text" 
                       value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
+                      onChange={(e) => setConfig({ topic: e.target.value })}
                       placeholder="e.g. Normalization, Deadlock..."
                       className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-gray-50 w-full hover:bg-white transition-colors"
                     />
@@ -233,7 +242,7 @@ const VivaAI = () => {
                       {["5", "10", "15", "20"].map((num) => (
                         <button
                           key={num}
-                          onClick={() => setQuestionCount(num)}
+                          onClick={() => setConfig({ questionCount: num })}
                           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${questionCount === num ? "bg-[#1a1a1a] text-white shadow-md transform scale-105" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
                         >
                           {num}
@@ -246,7 +255,7 @@ const VivaAI = () => {
                     <div className="flex flex-col gap-2">
                       <select 
                         value={difficulty} 
-                        onChange={(e) => setDifficulty(e.target.value)}
+                        onChange={(e) => setConfig({ difficulty: e.target.value })}
                         className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-gray-50 w-full hover:bg-white transition-colors cursor-pointer"
                       >
                         <option value="easy">🟢 Easy</option>
@@ -260,7 +269,7 @@ const VivaAI = () => {
                     <input 
                       type="text" 
                       value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
+                      onChange={(e) => setConfig({ studentName: e.target.value })}
                       placeholder="e.g. Rahul"
                       className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-gray-50 w-full hover:bg-white transition-colors"
                     />
@@ -282,7 +291,7 @@ const VivaAI = () => {
                   {teacherPresets.map((preset) => (
                     <div 
                       key={preset.id}
-                      onClick={() => setSelectedPreset(preset.id)}
+                      onClick={() => setConfig({ selectedPreset: preset.id })}
                       className={selectedPreset === preset.id 
                         ? "border-2 border-[#e8612a] bg-[#e8612a]/5 rounded-2xl p-4 cursor-pointer transition-all text-left shadow-sm flex flex-col items-center text-center justify-center transform scale-[1.02]" 
                         : "border border-gray-200 rounded-2xl p-4 cursor-pointer hover:border-[#e8612a]/40 hover:shadow-sm transition-all text-left flex flex-col items-center text-center justify-center group"
@@ -305,6 +314,7 @@ const VivaAI = () => {
                       <input 
                         type="text" 
                         placeholder="e.g. Dr. Rao"
+                        onChange={(e) => setConfig({ customTeacherName: e.target.value })}
                         className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-white w-full shadow-sm"
                       />
                     </div>
@@ -312,7 +322,7 @@ const VivaAI = () => {
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Style & Personality</label>
                       <textarea 
                         value={customDescription}
-                        onChange={(e) => setCustomDescription(e.target.value)}
+                        onChange={(e) => setConfig({ customDescription: e.target.value })}
                         placeholder="e.g. Very strict about definitions. Asks follow-up questions on edge cases..."
                         rows={3}
                         className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8612a] bg-white w-full custom-scrollbar shadow-sm"
@@ -325,7 +335,7 @@ const VivaAI = () => {
               {/* Start Button */}
               <button 
                 onClick={handleStartGenerating}
-                disabled={!subject || (selectedPreset === 'custom' && !customDescription)}
+                disabled={!subject || (selectedPreset === "custom" && !customDescription)}
                 className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white rounded-2xl py-5 text-base font-semibold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl group"
               >
                 <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-[#e8612a] transition-colors">
@@ -345,7 +355,7 @@ const VivaAI = () => {
             <Brain className="text-white w-10 h-10" />
           </div>
           <h2 className="font-['DM_Serif_Display'] text-2xl md:text-3xl mt-6 text-[#1a1a1a]">
-            Preparing {selectedPreset === 'custom' ? 'Custom Examiner' : teacher.name}...
+            Preparing {selectedPreset === "custom" ? "Custom Examiner" : teacher.name}...
           </h2>
           <p className="text-xs md:text-sm text-[#888] mt-2 max-w-sm">Generating {questionCount} questions on {subject}</p>
           <div className="flex gap-2 mt-6">
@@ -365,7 +375,7 @@ const VivaAI = () => {
                <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br ${teacher?.avatar_gradient || "from-gray-400 to-gray-600"} mx-auto flex items-center justify-center text-white font-bold text-2xl md:text-3xl shadow-lg ring-4 ring-white`}>
                  {teacher?.name?.split(" ").map(n => n[0]).join("") || "?"}
                </div>
-               <h2 className="font-['DM_Serif_Display'] text-2xl text-[#1a1a1a] mt-4">{selectedPreset === 'custom' ? 'Your Examiner' : teacher?.name}</h2>
+               <h2 className="font-['DM_Serif_Display'] text-2xl text-[#1a1a1a] mt-4">{selectedPreset === "custom" ? "Your Examiner" : teacher?.name}</h2>
                <span className="bg-[#e8612a]/10 text-[#e8612a] rounded-full px-3 py-1 text-[10px] md:text-xs font-medium mx-auto mt-2 inline-block">
                  {teacher?.style}
                </span>
@@ -396,7 +406,7 @@ const VivaAI = () => {
                </button>
                
                <p 
-                 onClick={() => setPhase('setup')}
+                 onClick={() => setPhase("setup")}
                  className="text-[10px] md:text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-4 inline-flex items-center gap-1 transition-colors"
                >
                  Change settings
@@ -426,8 +436,8 @@ const VivaAI = () => {
               <div className="flex items-center gap-2 md:gap-3">
                 <span className="text-xs md:text-sm font-mono text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{formatTime(timer)}</span>
                 <button 
-                  onClick={() => setIsMuted(m => !m)}
-                  className={`border ${isMuted ? 'border-red-200 text-red-500 bg-red-50' : 'border-gray-200 text-gray-600'} rounded-xl px-2.5 md:px-3 py-2 text-sm transition-all`}
+                  onClick={toggleMute}
+                  className={`border ${isMuted ? "border-red-200 text-red-500 bg-red-50" : "border-gray-200 text-gray-600"} rounded-xl px-2.5 md:px-3 py-2 text-sm transition-all`}
                 >
                   {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
                 </button>
@@ -444,7 +454,7 @@ const VivaAI = () => {
             <div className="bg-white rounded-2xl border border-[#f0ece8] p-5 md:p-8 mb-4 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#f4956a]/10 to-transparent rounded-bl-full pointer-events-none" />
               <div className="flex items-start gap-4 md:gap-5 relative z-10">
-                <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br ${teacher?.avatar_gradient || "from-gray-400 to-gray-600"} flex items-center justify-center text-white font-bold text-xl flex-shrink-0 ${isSpeaking === 'ai' ? 'ring-4 ring-[#e8612a]/40 ring-offset-2 animate-pulse' : ''}`}>
+                <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br ${teacher?.avatar_gradient || "from-gray-400 to-gray-600"} flex items-center justify-center text-white font-bold text-xl flex-shrink-0 ${isSpeaking === "ai" ? "ring-4 ring-[#e8612a]/40 ring-offset-2 animate-pulse" : ""}`}>
                   {teacher?.name?.split(" ").map(n => n[0]).join("") || "?"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -454,14 +464,14 @@ const VivaAI = () => {
                   </div>
                   
                   <div className="mt-2 md:mt-3 text-gray-700 text-xs md:text-sm leading-relaxed min-h-[60px] md:min-h-[80px]">
-                    {conversationLog.filter(m => m.role === 'ai').length > 0 ? (
-                      conversationLog.filter(m => m.role === 'ai').pop().text
+                    {conversationLog.filter(m => m.role === "ai").length > 0 ? (
+                      conversationLog.filter(m => m.role === "ai").pop().text
                     ) : (
                       <span className="italic text-gray-400">Waiting for examiner...</span>
                     )}
                   </div>
                   
-                  {isSpeaking === 'ai' && (
+                  {isSpeaking === "ai" && (
                     <div className="flex items-end gap-0.5 h-6 md:h-8 mt-3">
                        {[1,2,3,4,5].map(i => (
                          <div key={i} className="w-1 bg-[#e8612a] rounded-full animate-pulse transition-all" style={{ height: `${Math.random() * 100}%` }} />
@@ -476,15 +486,15 @@ const VivaAI = () => {
             <div className="bg-white rounded-2xl border border-[#f0ece8] p-5 md:p-6 shadow-sm relative">
               <h3 className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 md:mb-4">Your Response</h3>
               
-              {isSpeaking === 'student' && !isMuted ? (
+              {isSpeaking === "student" && !isMuted ? (
                 <div className="flex items-center justify-center gap-1 h-12 md:h-16 mb-4">
                    {[1,2,3,4,5,6,7,8,9].map((i, idx) => (
-                      <div key={i} className={`rounded-full transition-all flex-shrink-0 ${idx === 4 ? 'bg-[#e8612a] w-1.5 md:w-2' : 'bg-[#1a1a1a] w-1 md:w-1.5'}`} style={{ height: `${Math.random() * 80 + 20}%` }} />
+                      <div key={i} className={`rounded-full transition-all flex-shrink-0 ${idx === 4 ? "bg-[#e8612a] w-1.5 md:w-2" : "bg-[#1a1a1a] w-1 md:w-1.5"}`} style={{ height: `${Math.random() * 80 + 20}%` }} />
                    ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-4 mb-2">
-                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-gray-50 border-2 ${isMuted ? 'border-red-100 flex items-center justify-center' : 'border-gray-100 flex items-center justify-center'}`}>
+                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-gray-50 border-2 ${isMuted ? "border-red-100 flex items-center justify-center" : "border-gray-100 flex items-center justify-center"}`}>
                     {isMuted ? <MicOff className="text-red-300 w-5 h-5 md:w-6 md:h-6" /> : <Mic className="text-gray-300 w-5 h-5 md:w-6 md:h-6" />}
                   </div>
                   <p className="text-[10px] md:text-xs text-gray-400 mt-2 text-center">
@@ -494,8 +504,8 @@ const VivaAI = () => {
               )}
 
               <div className="mt-2 md:mt-4 p-3 rounded-xl bg-gray-50 border border-gray-100 text-[10px] md:text-sm text-gray-700 min-h-[50px] italic">
-                {conversationLog.filter(m => m.role === 'student').length > 0 ? (
-                  conversationLog.filter(m => m.role === 'student').pop().text
+                {conversationLog.filter(m => m.role === "student").length > 0 ? (
+                  conversationLog.filter(m => m.role === "student").pop().text
                 ) : (
                   <span className="text-gray-400">Your words will appear here as you speak...</span>
                 )}
@@ -515,11 +525,11 @@ const VivaAI = () => {
                 <h3 className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 sticky top-0 bg-white/90 backdrop-blur pb-1">Conversation History</h3>
                 <div className="space-y-3">
                   {conversationLog.map((msg, idx) => (
-                    <div key={idx} className={`flex items-start gap-2 ${msg.role === 'student' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold text-white flex-shrink-0 ${msg.role === 'ai' ? `bg-gradient-to-br ${teacher?.avatar_gradient}` : 'bg-[#1a1a1a]'}`}>
-                        {msg.role === 'ai' ? teacher?.name[0] : 'S'}
+                    <div key={idx} className={`flex items-start gap-2 ${msg.role === "student" ? "flex-row-reverse" : ""}`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold text-white flex-shrink-0 ${msg.role === "ai" ? `bg-gradient-to-br ${teacher?.avatar_gradient}` : "bg-[#1a1a1a]"}`}>
+                        {msg.role === "ai" ? teacher?.name[0] : "S"}
                       </div>
-                      <div className={`rounded-xl px-3 py-2 text-[10px] md:text-xs max-w-[85%] ${msg.role === 'student' ? 'bg-[#1a1a1a] text-white rounded-tr-sm' : 'bg-gray-50 text-gray-700 rounded-tl-sm'}`}>
+                      <div className={`rounded-xl px-3 py-2 text-[10px] md:text-xs max-w-[85%] ${msg.role === "student" ? "bg-[#1a1a1a] text-white rounded-tr-sm" : "bg-gray-50 text-gray-700 rounded-tl-sm"}`}>
                         {msg.text}
                       </div>
                     </div>
@@ -531,8 +541,8 @@ const VivaAI = () => {
             
             {/* Visual Testing Helpers (Since no backend) */}
             <div className="flex gap-2 mt-4 opacity-30 hover:opacity-100 transition-opacity justify-center text-[10px]">
-               <button onClick={() => simulateLiveEvent('ai-speak')} className="bg-gray-200 px-2 py-1 rounded">Sim. AI</button>
-               <button onClick={() => simulateLiveEvent('student-speak')} className="bg-gray-200 px-2 py-1 rounded">Sim. Student</button>
+               <button onClick={() => simulateLiveEvent("ai-speak")} className="bg-gray-200 px-2 py-1 rounded">Sim. AI</button>
+               <button onClick={() => simulateLiveEvent("student-speak")} className="bg-gray-200 px-2 py-1 rounded">Sim. Student</button>
             </div>
             
           </div>
@@ -613,7 +623,7 @@ const VivaAI = () => {
       )}
 
       {/* PHASE 3: RESULTS */}
-      {phase === "results" && analysis && (
+      {phase === "results" && analysisResult && (
         <div className="max-w-4xl mx-auto">
           {/* Hero Banner */}
           <div className="bg-gradient-to-br from-[#f4956a] via-[#e8704a] to-[#fde8cc] rounded-2xl p-6 md:p-8 mb-6 relative overflow-hidden shadow-sm">
@@ -630,10 +640,10 @@ const VivaAI = () => {
               
               <div className="bg-white/30 backdrop-blur-sm rounded-2xl px-6 py-4 text-center min-w-[120px] self-end md:self-auto border border-white/20 shadow-sm">
                 <div className="flex items-end justify-center gap-1">
-                  <span className="font-['DM_Serif_Display'] text-5xl md:text-6xl text-[#1e0f06] leading-none">{analysis.overall_score}</span>
+                  <span className="font-['DM_Serif_Display'] text-5xl md:text-6xl text-[#1e0f06] leading-none">{analysisResult.overall_score}</span>
                   <span className="text-sm md:text-base text-[#1e0f06]/50 mb-1">/ 100</span>
                 </div>
-                <div className="text-lg md:text-xl font-bold text-[#e8612a] mt-1">{analysis.grade_label}</div>
+                <div className="text-lg md:text-xl font-bold text-[#e8612a] mt-1">{analysisResult.grade_label}</div>
               </div>
             </div>
           </div>
@@ -641,10 +651,10 @@ const VivaAI = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
             {[
-              { label: "Overall Score", value: `${analysis.overall_score}%`, icon: Trophy, color: "text-[#e8612a]", bg: "bg-[#e8612a]/10" },
-              { label: "Grade", value: analysis.grade_label, icon: Award, color: "text-purple-500", bg: "bg-purple-100" },
-              { label: "Strong Topics", value: analysis.strong_topics.length.toString(), icon: TrendingUp, color: "text-green-500", bg: "bg-green-100" },
-              { label: "Needs Revision", value: analysis.weak_topics.length.toString(), icon: AlertCircle, color: "text-red-500", bg: "bg-red-100" }
+              { label: "Overall Score", value: `${analysisResult.overall_score}%`, icon: Trophy, color: "text-[#e8612a]", bg: "bg-[#e8612a]/10" },
+              { label: "Grade", value: analysisResult.grade_label, icon: Award, color: "text-purple-500", bg: "bg-purple-100" },
+              { label: "Strong Topics", value: analysisResult.strong_topics.length.toString(), icon: TrendingUp, color: "text-green-500", bg: "bg-green-100" },
+              { label: "Needs Revision", value: analysisResult.weak_topics.length.toString(), icon: AlertCircle, color: "text-red-500", bg: "bg-red-100" }
             ].map((stat, idx) => (
               <div key={idx} className="bg-white rounded-2xl border border-[#f0ece8] p-4 md:p-5 flex items-center gap-3 md:gap-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${stat.bg}`}>
@@ -669,7 +679,7 @@ const VivaAI = () => {
               </div>
               <p className="text-[10px] md:text-xs text-gray-400 mb-4 italic">In the words of {teacher?.name}</p>
               <div className="text-xs md:text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-100">
-                {analysis.summary_paragraph}
+                {analysisResult.summary_paragraph}
               </div>
             </div>
 
@@ -679,7 +689,7 @@ const VivaAI = () => {
               <div className="mb-5">
                 <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-3">Strong Areas</p>
                 <div className="flex flex-wrap gap-2">
-                  {analysis.strong_topics.map((t, idx) => (
+                  {analysisResult.strong_topics.map((t, idx) => (
                     <span key={idx} className="bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2">
                       <CheckCircle size={12} /> {t}
                     </span>
@@ -692,7 +702,7 @@ const VivaAI = () => {
               <div>
                 <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-3">Revise These</p>
                 <div className="flex flex-wrap gap-2">
-                  {analysis.weak_topics.map((t, idx) => (
+                  {analysisResult.weak_topics.map((t, idx) => (
                     <span key={idx} className="bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2">
                       <AlertCircle size={12} /> {t}
                     </span>
@@ -706,10 +716,10 @@ const VivaAI = () => {
           <div className="bg-white rounded-2xl border border-[#f0ece8] p-5 md:p-6 mb-6 shadow-sm">
             <h3 className="font-['DM_Serif_Display'] text-lg md:text-xl text-[#1a1a1a] mb-5">Question-by-Question Review</h3>
             <div className="space-y-3">
-              {analysis.question_results.map((q) => (
+              {analysisResult.question_results.map((q) => (
                 <div key={q.question_id} className="border border-gray-200 rounded-xl overflow-hidden hover:border-[#e8612a]/30 transition-colors">
                   <div 
-                    onClick={() => setExpandedQuestion(expandedQuestion === q.question_id ? null : q.question_id)}
+                    onClick={() => setExpandedQuestion(q.question_id)}
                     className="flex flex-wrap md:flex-nowrap items-center justify-between p-4 cursor-pointer hover:bg-gray-50 gap-3"
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -717,7 +727,7 @@ const VivaAI = () => {
                       <p className="text-xs md:text-sm font-medium text-[#1a1a1a] truncate">{q.question}</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto justify-end md:justify-start">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${q.score >= 80 ? 'bg-green-100 text-green-700' : q.score >= 50 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${q.score >= 80 ? "bg-green-100 text-green-700" : q.score >= 50 ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700"}`}>
                         {q.score} / 100
                       </span>
                       {expandedQuestion === q.question_id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
@@ -759,13 +769,13 @@ const VivaAI = () => {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
             <button 
-              onClick={() => { setPhase("setup"); setTimer(0); setConversationLog([]); setAnalysis(null); }}
+              onClick={resetViva}
               className="flex-1 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl py-3.5 text-xs md:text-sm font-semibold transition-all flex items-center justify-center gap-2"
             >
               <Plus size={16} /> New Viva Session
             </button>
             <button 
-              onClick={() => { alert('Downloading report mock feature'); }}
+              onClick={() => { alert("Downloading report mock feature"); }}
               className="flex-1 bg-white border border-gray-200 hover:border-gray-400 text-gray-700 rounded-xl py-3.5 text-xs md:text-sm font-semibold transition-all flex items-center justify-center gap-2"
             >
               <Download size={16} /> Download Report

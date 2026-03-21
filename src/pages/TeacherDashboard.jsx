@@ -1,11 +1,11 @@
 import React from "react";
 import { LogOut, Users, ClipboardList, Megaphone } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store";
 
 // ── TeacherDashboard: Stub dashboard for logged-in teachers ──
 // Mirrors the StudentDashboard layout with teacher-specific placeholder cards
 const TeacherDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuthStore();
 
   // Placeholder card data for teacher features
   const placeholderCards = [

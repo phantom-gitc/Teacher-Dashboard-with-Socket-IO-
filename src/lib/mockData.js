@@ -151,3 +151,41 @@ export const fallbackPYQAnalysis = {
     "Draw ER diagram for a library system.",
   ],
 };
+
+// ── Last seen timestamps per userId — used by LastSeen component ──
+export const mockLastSeen = {
+  "1": new Date(Date.now() - 12 * 60 * 1000).toISOString(), // 12 min ago
+  "2": new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+  "3": new Date(Date.now() - 2 * 60 * 1000).toISOString(), // 2 min ago
+  "4": new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // yesterday
+  "s1": new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+  "s2": new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+  "s3": new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  "s4": new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+};
+
+// ── Mock reply pools — used by socket.js mock simulation ──
+export const mockRepliesData = {
+  teacher: [
+    "Please check the textbook chapter on this topic.",
+    "Good question — we will cover this in the next class.",
+    "Your understanding is correct. Keep it up.",
+    "Please refer to the notes I shared last week.",
+    "Submit your doubts before Friday so I can address them.",
+  ],
+  student: [
+    "Thank you, I will check.",
+    "Okay, understood!",
+    "Got it, thank you!",
+    "Should I resubmit the assignment?",
+    "Can you please share the reference material?",
+  ],
+  group: [
+    "Has everyone submitted?",
+    "Let us meet in the library.",
+    "Can someone share the notes?",
+    "The deadline is tomorrow right?",
+    "I will create the WhatsApp group.",
+  ],
+};
+

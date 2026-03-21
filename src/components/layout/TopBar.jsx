@@ -1,9 +1,11 @@
 import React from "react";
 import { Bell, Menu } from "lucide-react";
-import { mockUser, mockNotifications } from "@/lib/mockData";
+import { mockUser } from "@/lib/mockData";
+import { useDashboardStore } from "@/store";
 
+// ── TopBar: Fixed header with notification bell and user avatar ──
 const TopBar = ({ title, onMenuClick }) => {
-  const unreadCount = mockNotifications.filter((n) => n.unread).length;
+  const { unreadCount } = useDashboardStore();
 
   return (
     <header className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-[#f0ece8] flex items-center justify-between px-4 md:px-8 z-10 transition-all duration-300">

@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './store';
+import { connectSocket, disconnectSocket } from './lib/socket';
 import Login from './pages/Login';
 import StudentRegister from './pages/StudentRegister';
 import TeacherRegister from './pages/TeacherRegister';
-import StudentDashboard from './pages/student/Dashboard';
-import TeacherDashboard from './pages/TeacherDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Student Dashboard Routes
+// ── Student Pages ──
+import StudentDashboard from './pages/student/Dashboard';
 import NotesGenerator from './pages/student/NotesGenerator';
 import PYQAnalyzer from './pages/student/PYQAnalyzer';
 import AIAssistant from './pages/student/AIAssistant';
@@ -18,7 +19,28 @@ import Collaboration from './pages/student/Collaboration';
 import Progress from './pages/student/Progress';
 import VivaAI from './pages/student/VivaAI';
 
+// ── Teacher Pages ──
+import TeacherDashboardHome from './pages/teacher/TeacherDashboardHome';
+import AIAssignmentGenerator from './pages/teacher/AIAssignmentGenerator';
+import CreateAssignment from './pages/teacher/CreateAssignment';
+import Submissions from './pages/teacher/Submissions';
+import Evaluation from './pages/teacher/Evaluation';
+import StudentChats from './pages/teacher/StudentChats';
+import Announcements from './pages/teacher/Announcements';
+import Analytics from './pages/teacher/Analytics';
+
 const App = () => {
+  const { isAuthenticated } = useAuthStore();
+
+  // Connect socket when authenticated, disconnect when logged out
+  useEffect(() => {
+    if (isAuthenticated) {
+      connectSocket();
+    } else {
+      disconnectSocket();
+    }
+    return () => disconnectSocket();
+  }, [isAuthenticated]);
   return (
     <Routes>
       {/* ── Public Routes ── */}
@@ -43,7 +65,15 @@ const App = () => {
 
       {/* ── Teacher Routes ── */}
       <Route element={<ProtectedRoute allowedRole="teacher" />}>
-        <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
+        <Route path="/teacher" element={<Navigate to="/teacher/dashboard" replace />} />
+        <Route path="/teacher/dashboard" element={<TeacherDashboardHome />} />
+        <Route path="/teacher/ai-generator" element={<AIAssignmentGenerator />} />
+        <Route path="/teacher/create-assignment" element={<CreateAssignment />} />
+        <Route path="/teacher/submissions" element={<Submissions />} />
+        <Route path="/teacher/evaluation" element={<Evaluation />} />
+        <Route path="/teacher/chats" element={<StudentChats />} />
+        <Route path="/teacher/announcements" element={<Announcements />} />
+        <Route path="/teacher/analytics" element={<Analytics />} />
       </Route>
 
       {/* ── Catch all ── */}

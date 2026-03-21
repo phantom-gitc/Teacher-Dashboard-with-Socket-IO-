@@ -1,11 +1,11 @@
 import React from "react";
 import { LogOut, BookOpen, StickyNote, CalendarCheck } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store";
 
 // ── StudentDashboard: Stub dashboard for logged-in students ──
 // Displays a welcome message and placeholder cards for future features
 const StudentDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuthStore();
 
   // Placeholder card data for student features
   const placeholderCards = [

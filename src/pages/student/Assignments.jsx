@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
-import { mockAssignments } from "@/lib/mockData";
 import { formatDate } from "@/lib/utils";
+import { useDashboardStore } from "@/store";
 import { Calendar, Upload, UploadCloud, X, CheckCircle2 } from "lucide-react";
 
 const subjectColors = {
@@ -22,8 +22,11 @@ const statusColors = {
 const tabs = ["All", "Pending", "Submitted", "Graded"];
 
 const Assignments = () => {
+  // ── Shared state from store ──
+  const { assignments, updateAssignmentStatus } = useDashboardStore();
+
+  // ── Local UI state stays as useState ──
   const [activeTab, setActiveTab] = useState("All");
-  const [assignments, setAssignments] = useState(mockAssignments);
   const [uploadModal, setUploadModal] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadNote, setUploadNote] = useState("");
@@ -32,7 +35,10 @@ const Assignments = () => {
   const filtered = activeTab === "All" ? assignments : assignments.filter((a) => a.status === activeTab);
 
   const handleUpload = () => {
-    setAssignments((prev) => prev.map((a) => a.id === uploadModal.id ? { ...a, status: "Submitted" } : a));
+    updateAssignmentStatus(uploadModal.id, "Submitted", {
+      submittedAt: new Date().toISOString(),
+      fileName: selectedFile?.name || null,
+    });
     setUploadModal(null);
     setSelectedFile(null);
     setUploadNote("");

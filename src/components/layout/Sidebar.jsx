@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore, useChatStore } from "@/store";
 import { mockUser } from "@/lib/mockData";
 import {
   LayoutDashboard, FileText, Search, Bot, BrainCircuit,
   ClipboardList, MessageCircle, Users, TrendingUp, LogOut, X, Mic
 } from "lucide-react";
+import UnreadBadge from "@/components/chat/UnreadBadge";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/student/dashboard" },
@@ -22,7 +23,10 @@ const navItems = [
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout } = useAuthStore();
+  const { getTotalTeacherUnread, getTotalCollabUnread } = useChatStore();
+  const teacherUnread = getTotalTeacherUnread();
+  const collabUnread = getTotalCollabUnread();
 
   return (
     <aside className={`fixed left-0 top-0 h-full w-64 bg-[#1a1a1a] flex flex-col z-30 transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
@@ -74,7 +78,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               }
             >
               <item.icon size={18} className="flex-shrink-0" />
-              <span className="truncate">{item.label}</span>
+              <span className="flex-1 truncate">{item.label}</span>
+              {item.path === "/student/ask-teacher" && <UnreadBadge count={teacherUnread} />}
+              {item.path === "/student/collaboration" && <UnreadBadge count={collabUnread} />}
             </Link>
           );
         })}

@@ -54,7 +54,7 @@ const PYQAnalyzer = () => {
       <PageHeader title="PYQ Analyzer" subtitle="Upload previous year question papers and get AI-powered insights." />
 
       {!showResults ? (
-        <div className="bg-white rounded-2xl p-6 md:p-10 border-2 border-dashed border-[#e8612a]/30 text-center max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl p-6 md:p-10 border-2 border-dashed border-[#e8612a]/30 text-center w-full">
           <UploadCloud size={56} className="text-[#e8612a] mx-auto mb-4 md:w-16 md:h-16" />
           <h3 className="text-lg font-semibold text-[#1a1a1a] mb-1">Upload Question Paper</h3>
           <p className="text-sm text-gray-400 mb-6">Supports .txt files or paste text directly below</p>
