@@ -1,11 +1,10 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
-import { mockTeachers } from "@/lib/mockData";
 import { useChatStore } from "@/store";
 import { emitMessage } from "@/lib/socket";
-import { Search } from "lucide-react";
-import { useState } from "react";
+import { Search, Loader2 } from "lucide-react";
+import api from "@/lib/api";
 
 // Chat sub-components
 import MessageBubble from "@/components/chat/MessageBubble";
@@ -44,26 +43,46 @@ const AskTeacher = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
+  const [teachers, setTeachers] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
   const messagesEndRef = useRef(null);
 
-  const selectedTeacher = mockTeachers.find((t) => t.id === selectedTeacherId) || null;
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const res = await api.get("/users/teachers");
+        if (res.success && res.data) {
+          setTeachers(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch teachers:", err);
+      } finally {
+        setLoadingTeachers(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
+
+  const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId || t._id === selectedTeacherId) || null;
   const currentMessages = selectedTeacherId ? (teacherChats[selectedTeacherId] || []) : [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [teacherChats, selectedTeacherId]);
 
-  const filteredTeachers = mockTeachers.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTeachers = teachers.filter((t) =>
+    t.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Sort: unread first, then by last message
   const sortedTeachers = [...filteredTeachers].sort((a, b) => {
-    const ua = unreadCounts[a.id] || 0;
-    const ub = unreadCounts[b.id] || 0;
+    const idA = a.id || a._id;
+    const idB = b.id || b._id;
+    const ua = unreadCounts[idA] || 0;
+    const ub = unreadCounts[idB] || 0;
     if (ub !== ua) return ub - ua;
-    const la = lastMessages[a.id];
-    const lb = lastMessages[b.id];
+    const la = lastMessages[idA];
+    const lb = lastMessages[idB];
     if (la && lb) return new Date(lb.timestamp || 0) - new Date(la.timestamp || 0);
     return la ? -1 : lb ? 1 : 0;
   });
@@ -103,22 +122,32 @@ const AskTeacher = () => {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {sortedTeachers.map((teacher) => {
-              const last = lastMessages[teacher.id];
-              const unread = unreadCounts[teacher.id] || 0;
+            {loadingTeachers ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : sortedTeachers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-gray-400 text-sm">
+                No teachers found.
+              </div>
+            ) : (
+              sortedTeachers.map((teacher) => {
+              const tId = teacher.id || teacher._id;
+              const last = lastMessages[tId];
+              const unread = unreadCounts[tId] || 0;
               return (
-                <div key={teacher.id} onClick={() => { setSelectedTeacher(teacher.id); setShowChatOnMobile(true); }}
-                  className={`flex items-center gap-3 p-4 cursor-pointer border-b border-gray-50 transition-all ${selectedTeacherId === teacher.id ? "bg-[#e8612a]/5 border-l-2 border-l-[#e8612a]" : "hover:bg-gray-50"}`}>
+                <div key={tId} onClick={() => { setSelectedTeacher(tId); setShowChatOnMobile(true); }}
+                  className={`flex items-center gap-3 p-4 cursor-pointer border-b border-gray-50 transition-all ${selectedTeacherId === tId ? "bg-[#e8612a]/5 border-l-2 border-l-[#e8612a]" : "hover:bg-gray-50"}`}>
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#f4956a] to-[#e8612a] flex items-center justify-center text-white text-sm font-bold">
-                      {teacher.name.split(" ").map((n) => n[0]).join("").substring(0, 2)}
+                      {teacher.fullName?.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() || "T"}
                     </div>
-                    <OnlineDot userId={String(teacher.id)} size="sm" />
+                    <OnlineDot userId={String(tId)} size="sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a] truncate">{teacher.name}</p>
+                    <p className="text-sm font-medium text-[#1a1a1a] truncate">{teacher.fullName}</p>
                     <p className="text-xs text-gray-400 truncate">
-                      {last ? (last.content || last.text) : teacher.subject}
+                      {last ? (last.content || last.text) : (teacher.department || "CSIT")}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -131,7 +160,8 @@ const AskTeacher = () => {
                   </div>
                 </div>
               );
-            })}
+              })
+            )}
           </div>
         </div>
 
@@ -142,10 +172,10 @@ const AskTeacher = () => {
           ) : (
             <>
               <ChatHeader
-                avatarInitials={selectedTeacher.name.split(" ").map((n) => n[0]).join("").substring(0, 2)}
-                name={selectedTeacher.name}
-                subtitle={selectedTeacher.subject}
-                userId={String(selectedTeacher.id)}
+                avatarInitials={selectedTeacher.fullName?.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() || "T"}
+                name={selectedTeacher.fullName}
+                subtitle={selectedTeacher.department || "CSIT Teacher"}
+                userId={String(selectedTeacher.id || selectedTeacher._id)}
                 onClearChat={handleClearChat}
                 onSearchMessages={(q) => {}}
               />

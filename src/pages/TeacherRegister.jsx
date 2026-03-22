@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Eye, EyeOff, Loader2, Lock, Info, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AuthCard from "@/components/AuthCard";
+import { useAuthStore } from "@/store";
 
 // ── Zod validation schema for Teacher Registration ──
 const teacherRegisterSchema = z.object({
@@ -14,17 +15,18 @@ const teacherRegisterSchema = z.object({
   department: z.literal("CSIT"),
   email: z
     .string()
-    .email("Invalid email address")
-    .refine((val) => val.endsWith("@csit.edu.in"), {
-      message: "Must use college email ending with @csit.edu.in",
-    }),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+    .email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 const TeacherRegister = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  const { registerTeacher } = useAuthStore();
+  const [authError, setAuthError] = useState("");
+
 
   const {
     register,
@@ -33,23 +35,25 @@ const TeacherRegister = () => {
   } = useForm({
     resolver: zodResolver(teacherRegisterSchema),
     mode: "onChange",
-    defaultValues: {
-      department: "CSIT",
-    },
+    defaultValues: { department: "CSIT" },
   });
 
-  // ── Handle teacher registration submission ──
   const onSubmit = async (data) => {
-    // Simulate network delay (1 second)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setAuthError("");
+    const result = await registerTeacher({
+      fullName: data.fullName,
+      teacherId: data.teacherId,
+      email: data.email,
+      password: data.password,
+      department: data.department,
+    });
 
-    // Show success message and redirect after 2 seconds
-    setSuccessMessage(
-      "Request submitted! Pending admin approval. Redirecting..."
-    );
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
+    if (result.success) {
+      setSuccessMessage("Request submitted! Pending admin approval. Redirecting...");
+      setTimeout(() => navigate("/login"), 2000);
+    } else {
+      setAuthError(result.error || "Registration failed");
+    }
   };
 
   return (

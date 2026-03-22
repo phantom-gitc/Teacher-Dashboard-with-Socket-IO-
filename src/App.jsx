@@ -30,7 +30,12 @@ import Announcements from './pages/teacher/Announcements';
 import Analytics from './pages/teacher/Analytics';
 
 const App = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, initAuth } = useAuthStore();
+
+  // On mount — validate existing token and reconnect socket
+  useEffect(() => {
+    initAuth();
+  }, []);
 
   // Connect socket when authenticated, disconnect when logged out
   useEffect(() => {

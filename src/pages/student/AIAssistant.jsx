@@ -114,42 +114,28 @@ const AIAssistant = () => {
         { role: "user", content: userText },
       ];
 
-      // 4. Build Gemini-compatible contents array
-      // Gemini roles: "user" and "model"
-      const contents = history.map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        setIsLoading(false);
-        setIsStreaming(false);
-        setStreamingMessageId(null);
-        setError("Gemini API key not found. Add VITE_GEMINI_API_KEY to your .env file.");
-        updateAIMessage(assistantId, "⚠️ API key not configured.");
-        return;
-      }
-
-      const streamingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+      const token = localStorage.getItem("csit_token");
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const streamingUrl = `${API_URL}/ai/chat/stream`;
 
       try {
         const response = await fetch(streamingUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: { maxOutputTokens: 1000 },
+            messages: history,
+            systemPrompt: SYSTEM_PROMPT,
           }),
         });
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(
-            errData.error?.message || `API error: ${response.status}`
-          );
+          throw new Error(errData.message || `API error: ${response.status}`);
         }
+
 
         const reader = response.body.getReader();
         readerRef.current = reader;

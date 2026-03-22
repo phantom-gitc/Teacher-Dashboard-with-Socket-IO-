@@ -1,11 +1,16 @@
 import React from "react";
 import { Bell, Menu } from "lucide-react";
-import { mockUser } from "@/lib/mockData";
-import { useDashboardStore } from "@/store";
+import { useDashboardStore, useAuthStore } from "@/store";
 
 // ── TopBar: Fixed header with notification bell and user avatar ──
 const TopBar = ({ title, onMenuClick }) => {
   const { unreadCount } = useDashboardStore();
+  const { user } = useAuthStore();
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  };
 
   return (
     <header className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-[#f0ece8] flex items-center justify-between px-4 md:px-8 z-10 transition-all duration-300">
@@ -32,7 +37,7 @@ const TopBar = ({ title, onMenuClick }) => {
 
         {/* User avatar */}
         <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#e8612a] flex items-center justify-center text-white text-xs md:text-sm font-bold cursor-pointer flex-shrink-0">
-          {mockUser.initials}
+          {getInitials(user?.fullName)}
         </div>
       </div>
     </header>

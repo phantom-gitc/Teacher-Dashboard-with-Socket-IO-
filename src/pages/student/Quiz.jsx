@@ -2,8 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import { useAI } from "@/hooks/useAI";
-import { fallbackQuizQuestions } from "@/lib/mockData";
 import { Loader2, ChevronLeft, ChevronRight, RotateCcw, CheckCircle2, XCircle } from "lucide-react";
+
+const fallbackQuizQuestions = [
+  { question: "Fallback question 1?", options: ["A", "B", "C", "D"], correct: 0, explanation: "AI failed to generate." },
+  { question: "Fallback question 2?", options: ["A", "B", "C", "D"], correct: 1, explanation: "AI failed to generate." },
+];
 
 const Quiz = () => {
   const { callAI, loading } = useAI();

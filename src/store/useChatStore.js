@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { mockTeacherMessages, mockGroupMessages, mockStudentMessages, mockGroups } from "@/lib/mockData";
 
 // ── useChatStore: All chat state for AIAssistant, AskTeacher, Collaboration ──
 // No persist — resets on refresh intentionally
+// All data comes from backend API and Socket.IO events
 
 const genId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 const nowTime = () => new Date().toISOString();
@@ -13,17 +13,20 @@ export const useChatStore = create((set, get) => ({
   isAILoading: false,
 
   // ── Ask Teacher ──
-  teacherChats: { ...mockTeacherMessages },
+  teacherChats: {},
   selectedTeacherId: null,
 
   // ── Collaboration — Groups ──
-  groupChats: { ...mockGroupMessages },
-  groups: [...mockGroups],
+  groupChats: {},
+  groups: [],
   selectedGroupId: null,
 
   // ── Collaboration — Students ──
-  studentChats: { ...mockStudentMessages },
+  studentChats: {},
   selectedStudentId: null,
+
+  // ── Notifications (pushed from socket) ──
+  notifications: [],
 
   // Active tab in Collaboration page: "Groups" | "Students"
   activeCollabTab: "Groups",
@@ -271,7 +274,46 @@ export const useChatStore = create((set, get) => ({
   setReplyingTo: (message) => set({ replyingTo: message }),
   clearReplyingTo: () => set({ replyingTo: null }),
 
-  // ── Helpers exposed for socket.js mock ──
+  // ── Helpers ──
   setLastMessage: (chatId, msg) =>
     set((state) => ({ lastMessages: { ...state.lastMessages, [chatId]: msg } })),
+
+  // ── Socket.IO event handlers ──
+  // Called from socket.js when a personal message arrives via socket
+  addIncomingMessage: (message) =>
+    set((state) => {
+      const roomId = message.roomId;
+      return {
+        teacherChats: {
+          ...state.teacherChats,
+          [roomId]: [...(state.teacherChats[roomId] || []), message],
+        },
+        lastMessages: { ...state.lastMessages, [roomId]: message },
+      };
+    }),
+
+  // Called from socket.js when a group message arrives via socket
+  addIncomingGroupMessage: (message) =>
+    set((state) => {
+      const groupId = message.groupId;
+      return {
+        groupChats: {
+          ...state.groupChats,
+          [groupId]: [...(state.groupChats[groupId] || []), message],
+        },
+        lastMessages: { ...state.lastMessages, [`group_${groupId}`]: message },
+      };
+    }),
+
+  // Called from socket.js when a real-time notification arrives
+  addNotification: (notification) =>
+    set((state) => ({
+      notifications: [notification, ...state.notifications],
+    })),
+
+  // Called from socket.js when message reactions are updated
+  setReactions: (messageId, reactions) =>
+    set((state) => ({
+      reactions: { ...state.reactions, [messageId]: reactions },
+    })),
 }));

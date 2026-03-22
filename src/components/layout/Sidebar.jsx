@@ -1,7 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore, useChatStore } from "@/store";
-import { mockUser } from "@/lib/mockData";
 import {
   LayoutDashboard, FileText, Search, Bot, BrainCircuit,
   ClipboardList, MessageCircle, Users, TrendingUp, LogOut, X, Mic
@@ -23,7 +22,7 @@ const navItems = [
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const { getTotalTeacherUnread, getTotalCollabUnread } = useChatStore();
   const teacherUnread = getTotalTeacherUnread();
   const collabUnread = getTotalCollabUnread();
@@ -51,12 +50,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         </div>
         <div className="mt-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-[#e8612a] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {mockUser.initials}
+            {user?.fullName?.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "U"}
           </div>
           <div className="min-w-0">
-            <p className="text-white text-sm font-medium truncate">{mockUser.name}</p>
+            <p className="text-white text-sm font-medium truncate">{user?.fullName || "Student"}</p>
             <span className="text-[10px] bg-[#e8612a]/10 text-[#e8612a] px-2 py-0.5 rounded-full font-medium inline-block mt-0.5">
-              Student
+              {user?.branch || "Student"}
             </span>
           </div>
         </div>

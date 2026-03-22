@@ -1,12 +1,36 @@
 import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
-import { mockUser, mockProgressData } from "@/lib/mockData";
+import { useAuthStore } from "@/store";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, ClipboardList, BookOpen, BrainCircuit, Lightbulb } from "lucide-react";
 
+// Fallback data for charts until the progress analytics API is connected
+const fallbackProgressData = {
+  subjectMarks: [
+    { subject: "CN", marks: 85 },
+    { subject: "DBMS", marks: 92 },
+    { subject: "OS", marks: 78 },
+    { subject: "DSA", marks: 88 },
+    { subject: "SE", marks: 75 },
+  ],
+  performanceTrend: [
+    { month: "Jan", score: 75 },
+    { month: "Feb", score: 82 },
+    { month: "Mar", score: 88 },
+    { month: "Apr", score: 85 },
+    { month: "May", score: 92 },
+  ],
+  weakAreas: [
+    { topic: "Concurrency Control", subject: "DBMS", score: 65 },
+    { topic: "Paging & Segmentation", subject: "OS", score: 70 },
+    { topic: "Dynamic Programming", subject: "DSA", score: 72 },
+  ],
+};
+
 const Progress = () => {
-  const { subjectMarks, performanceTrend, weakAreas, assignmentStats } = mockProgressData;
+  const { user } = useAuthStore();
+  const { subjectMarks, performanceTrend, weakAreas } = fallbackProgressData;
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -31,24 +55,24 @@ const Progress = () => {
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="w-full md:w-auto">
               <p className="text-[#2a1a0e]/60 text-xs md:text-sm font-medium uppercase tracking-wide mb-1">Overall GPA</p>
-              <h2 className="text-4xl md:text-5xl mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>{mockUser.gpa}</h2>
+              <h2 className="text-4xl md:text-5xl mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>8.5</h2>
               <div className="flex items-center gap-2 md:gap-3">
-                <span className="bg-white/40 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold">{mockUser.semester}</span>
-                <span className="bg-[#1a1a1a] text-[#f4956a] px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold">Rank: {mockUser.rank}</span>
+                <span className="bg-white/40 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold">{user?.branch || "CSIT"}</span>
+                <span className="bg-[#1a1a1a] text-[#f4956a] px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold">Rank: 12</span>
               </div>
             </div>
             
             <div className="w-full md:w-auto flex justify-between md:justify-start gap-4 md:gap-6 md:border-l border-[#2a1a0e]/10 pt-4 md:pt-0 border-t md:border-t-0 md:pl-6">
               <div className="text-center flex-1 md:flex-none">
-                <p className="text-xl md:text-2xl font-bold">{mockUser.attendancePercent}%</p>
+                <p className="text-xl md:text-2xl font-bold">85%</p>
                 <p className="text-[10px] md:text-xs text-[#2a1a0e]/70 flex items-center gap-1 justify-center"><BookOpen size={10} className="md:w-3 md:h-3" /> Att.</p>
               </div>
               <div className="text-center flex-1 md:flex-none">
-                <p className="text-xl md:text-2xl font-bold">{mockUser.assignmentsCompleted}</p>
+                <p className="text-xl md:text-2xl font-bold">12</p>
                 <p className="text-[10px] md:text-xs text-[#2a1a0e]/70 flex items-center gap-1 justify-center"><ClipboardList size={10} className="md:w-3 md:h-3" /> Assign.</p>
               </div>
               <div className="text-center flex-1 md:flex-none">
-                <p className="text-xl md:text-2xl font-bold">{mockUser.quizzesTaken}</p>
+                <p className="text-xl md:text-2xl font-bold">5</p>
                 <p className="text-[10px] md:text-xs text-[#2a1a0e]/70 flex items-center gap-1 justify-center"><BrainCircuit size={10} className="md:w-3 md:h-3" /> Quizzes</p>
               </div>
             </div>

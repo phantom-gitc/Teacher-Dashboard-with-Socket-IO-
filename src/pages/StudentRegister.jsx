@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Eye, EyeOff, Loader2, Lock, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AuthCard from "@/components/AuthCard";
-import { REGISTERED_ROLL_NUMBERS } from "@/lib/constants";
+import { useAuthStore } from "@/store";
 
 // ── Zod validation schema for Student Registration ──
 const studentRegisterSchema = z
@@ -16,11 +16,8 @@ const studentRegisterSchema = z
     branch: z.literal("CSIT"),
     email: z
       .string()
-      .email("Invalid email address")
-      .refine((val) => val.endsWith("@csit.edu.in"), {
-        message: "Must use college email ending with @csit.edu.in",
-      }),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+      .email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -34,38 +31,37 @@ const StudentRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  const { registerStudent } = useAuthStore();
+  const [authError, setAuthError] = useState("");
+
   const {
     register,
     handleSubmit,
-    setError,
     formState: { errors, isSubmitting, isValid },
   } = useForm({
     resolver: zodResolver(studentRegisterSchema),
     mode: "onChange",
-    defaultValues: {
-      branch: "CSIT",
-    },
+    defaultValues: { branch: "CSIT" },
   });
+
 
   // ── Handle student registration submission ──
   const onSubmit = async (data) => {
-    // Check if roll number is already registered
-    if (REGISTERED_ROLL_NUMBERS.includes(data.rollNumber)) {
-      setError("rollNumber", {
-        type: "manual",
-        message: "Roll number already registered",
-      });
-      return;
+    setAuthError("");
+    const result = await registerStudent({
+      fullName: data.fullName,
+      rollNumber: data.rollNumber,
+      email: data.email,
+      password: data.password,
+      branch: data.branch,
+    });
+
+    if (result.success) {
+      setSuccessMessage("Account created! Redirecting to dashboard...");
+      setTimeout(() => navigate("/student/dashboard"), 1500);
+    } else {
+      setAuthError(result.error || "Registration failed");
     }
-
-    // Simulate network delay (1 second)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Show success message and redirect after 2 seconds
-    setSuccessMessage("Account created! Redirecting to login...");
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
   };
 
   return (
@@ -220,13 +216,9 @@ const StudentRegister = () => {
           )}
         </div>
 
-        {/* ── Success Alert ── */}
-        {successMessage && (
-          <Alert className="bg-green-50 border-green-400 text-green-700 py-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-sm">
-              {successMessage}
-            </AlertDescription>
+        {authError && (
+          <Alert variant="destructive" className="py-2">
+            <AlertDescription className="text-sm">{authError}</AlertDescription>
           </Alert>
         )}
 

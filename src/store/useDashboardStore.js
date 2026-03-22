@@ -1,53 +1,90 @@
-import { create } from "zustand";
-import { mockNotifications, mockAssignments } from "@/lib/mockData";
+// src/store/useDashboardStore.js — Student dashboard store backed by backend API
+// No more mock data — data comes from /api/student/*
 
-// ── useDashboardStore: Shared state across all dashboard pages ──
-// Avoids prop drilling for notifications, assignments, sidebar state
-// No persist — resets on refresh intentionally
+import { create } from "zustand";
+import api from "@/lib/api";
 
 export const useDashboardStore = create((set) => ({
   // ── State ──
-  notifications: [...mockNotifications],
-  assignments: [...mockAssignments],
+  dashboardData: null,
+  notifications: [],
+  assignments: [],
+  unreadCount: 0,
   activeSection: "",
   sidebarCollapsed: false,
+  isLoading: false,
+  error: null,
 
-  // Derived count — unread notifications
-  unreadCount: mockNotifications.filter((n) => n.unread).length,
+  // ── Fetch student dashboard ──
+  fetchDashboard: async () => {
+    set({ isLoading: true });
+    try {
+      const res = await api.get("/student/dashboard");
+      const data = res.data;
+      set({
+        dashboardData: data,
+        notifications: data.notifications || [],
+        assignments: data.pendingAssignments?.recent || [],
+        unreadCount: data.notifications?.length || 0,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+    }
+  },
 
-  // ── Actions ──
+  // ── Fetch notifications ──
+  fetchNotifications: async () => {
+    try {
+      const res = await api.get("/student/notifications");
+      const list = res.data;
+      set({
+        notifications: list,
+        unreadCount: list.filter((n) => !n.isRead).length,
+      });
+    } catch {}
+  },
 
-  // Update active sidebar section
+  // ── Fetch student assignments ──
+  fetchAssignments: async () => {
+    try {
+      const res = await api.get("/assignments/student");
+      set({ assignments: res.data });
+    } catch {}
+  },
+
+  // ── Mark notification read ──
+  markNotificationRead: async (id) => {
+    try {
+      await api.put(`/student/notifications/${id}/read`, {});
+      set((state) => {
+        const updated = state.notifications.map((n) =>
+          n._id === id ? { ...n, isRead: true } : n
+        );
+        return { notifications: updated, unreadCount: updated.filter((n) => !n.isRead).length };
+      });
+    } catch {}
+  },
+
+  // ── Mark all read ──
+  markAllRead: async () => {
+    try {
+      await api.put("/student/notifications/read-all", {});
+      set((state) => ({
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+        unreadCount: 0,
+      }));
+    } catch {}
+  },
+
+  // ── UI state ──
   setActiveSection: (section) => set({ activeSection: section }),
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-  // Toggle sidebar collapsed state
-  toggleSidebar: () =>
-    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-
-  // Mark a single notification as read, recalculate unreadCount
-  markNotificationRead: (id) =>
-    set((state) => {
-      const updated = state.notifications.map((n) =>
-        n.id === id ? { ...n, unread: false } : n
-      );
-      return {
-        notifications: updated,
-        unreadCount: updated.filter((n) => n.unread).length,
-      };
-    }),
-
-  // Mark all notifications read
-  markAllRead: () =>
+  // ── Push a live notification from socket ──
+  addLiveNotification: (notification) =>
     set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, unread: false })),
-      unreadCount: 0,
-    })),
-
-  // Update a single assignment by id — status + optional submission data
-  updateAssignmentStatus: (id, status, submissionData = {}) =>
-    set((state) => ({
-      assignments: state.assignments.map((a) =>
-        a.id === id ? { ...a, status, ...submissionData } : a
-      ),
+      notifications: [notification, ...state.notifications],
+      unreadCount: state.unreadCount + 1,
     })),
 }));

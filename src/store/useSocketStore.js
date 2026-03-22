@@ -1,16 +1,16 @@
 import { create } from "zustand";
 
-// ── Mock online users — seeded immediately ──
-// These simulate 2 users already online when app loads
-const MOCK_ONLINE_SEED = ["1", "3"]; // matches teacher ids in mockTeachers
+// ── useSocketStore: Socket.IO connection state ──
+// Tracks online users, typing indicators, and real-time events
 
 export const useSocketStore = create((set, get) => ({
   // ── State ──
   isConnected: false,
-  onlineUsers: [...MOCK_ONLINE_SEED],
+  onlineUsers: [],
   typingUsers: {}, // keyed by roomId → [{userId, userName}]
   connectionError: null,
   reconnectAttempts: 0,
+  socketEvents: [], // generic event queue for assignment/submission/viva events
 
   // ── Actions ──
   setConnected: (bool) => set({ isConnected: bool }),
@@ -60,4 +60,13 @@ export const useSocketStore = create((set, get) => ({
     set((state) => ({ reconnectAttempts: state.reconnectAttempts + 1 })),
 
   resetReconnectAttempts: () => set({ reconnectAttempts: 0 }),
+
+  // ── Socket event queue (for assignment, submission, viva events) ──
+  addSocketEvent: (type, data) =>
+    set((state) => ({
+      socketEvents: [...state.socketEvents, { type, data, timestamp: Date.now() }],
+    })),
+
+  clearSocketEvents: () => set({ socketEvents: [] }),
 }));
+

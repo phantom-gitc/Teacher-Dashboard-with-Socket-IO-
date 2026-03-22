@@ -1,6 +1,6 @@
 import React from "react";
-import { useSocketStore } from "@/store";
-import { mockLastSeen } from "@/lib/mockData";
+import { useSocketStore, useChatStore } from "@/store";
+import { useAuthStore } from "@/store";
 
 const formatLastSeen = (iso) => {
   if (!iso) return "a while ago";
@@ -18,16 +18,15 @@ const formatLastSeen = (iso) => {
   return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 };
 
-// ── LastSeen: "Online" or "Last seen X ago" ──
+// ── LastSeen: "Online" or "Offline" ──
 const LastSeen = ({ userId }) => {
   const { onlineUsers } = useSocketStore();
   const isOnline = onlineUsers.includes(String(userId));
-  const lastSeenTs = mockLastSeen?.[String(userId)];
 
   if (isOnline) {
     return <span className="text-xs text-green-500 font-medium">Online</span>;
   }
-  return <span className="text-xs text-gray-400">Last seen {formatLastSeen(lastSeenTs)}</span>;
+  return <span className="text-xs text-gray-400">Offline</span>;
 };
 
 export default LastSeen;

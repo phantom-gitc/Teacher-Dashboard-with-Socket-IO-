@@ -1,22 +1,54 @@
-import React from "react";
+import React, { useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { mockUser } from "@/lib/mockData";
 import { formatDate } from "@/lib/utils";
-import { useDashboardStore } from "@/store";
-import { ClipboardList, FileText, BrainCircuit, MessageCircle, Calendar, Bell } from "lucide-react";
-
-const statCards = [
-  { label: "Pending Assignments", value: "3", icon: ClipboardList, color: "text-orange-500", bg: "bg-orange-50" },
-  { label: "Notes Created", value: "12", icon: FileText, color: "text-blue-500", bg: "bg-blue-50" },
-  { label: "Quiz Score Avg", value: "78%", icon: BrainCircuit, color: "text-green-500", bg: "bg-green-50" },
-  { label: "Messages", value: "5", icon: MessageCircle, color: "text-purple-500", bg: "bg-purple-50" },
-];
+import { useDashboardStore, useAuthStore } from "@/store";
+import { ClipboardList, FileText, BrainCircuit, MessageCircle, Calendar } from "lucide-react";
 
 const Dashboard = () => {
-  const { assignments, notifications, unreadCount } = useDashboardStore();
+  const { assignments, notifications, unreadCount, dashboardData, fetchDashboard, isLoading } = useDashboardStore();
+  const { user } = useAuthStore();
 
-  const pendingAssignments = assignments.filter((a) => a.status === "Pending").slice(0, 3);
+  // Fetch real dashboard data on mount
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const pendingAssignments = assignments.filter((a) => a.status === "pending" || a.status === "Pending").slice(0, 3);
   const recentNotifications = notifications.slice(0, 4);
+
+  // Real stats from API, fall back to 0 while loading
+  const stats = [
+    {
+      label: "Pending Assignments",
+      value: dashboardData?.pendingAssignments?.count ?? pendingAssignments.length,
+      icon: ClipboardList,
+      color: "text-orange-500",
+      bg: "bg-orange-50",
+    },
+    {
+      label: "Notes Created",
+      value: dashboardData?.notesCount ?? 0,
+      icon: FileText,
+      color: "text-blue-500",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Quiz Score Avg",
+      value: dashboardData?.quizStats?.avgScore != null
+        ? `${Math.round(dashboardData.quizStats.avgScore)}%`
+        : "—",
+      icon: BrainCircuit,
+      color: "text-green-500",
+      bg: "bg-green-50",
+    },
+    {
+      label: "Unread Messages",
+      value: unreadCount,
+      icon: MessageCircle,
+      color: "text-purple-500",
+      bg: "bg-purple-50",
+    },
+  ];
 
   return (
     <DashboardLayout title="Dashboard">
@@ -31,7 +63,7 @@ const Dashboard = () => {
               className="text-3xl text-[#1e0f06] mb-2"
               style={{ fontFamily: "'DM Serif Display', serif" }}
             >
-              {mockUser.name} 👋
+              {user?.fullName?.split(" ")[0]} 👋
             </h1>
             <p className="text-[#2a1a0e]/70 text-sm">
               You have {pendingAssignments.length} pending assignments and {unreadCount} new messages.
@@ -41,7 +73,7 @@ const Dashboard = () => {
 
         {/* ── Stats Row ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {statCards.map((card) => (
+          {stats.map((card) => (
             <div
               key={card.label}
               className="bg-white rounded-2xl p-4 md:p-5 border border-[#f0ece8] shadow-sm flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 hover:shadow-md transition-shadow"
@@ -50,7 +82,9 @@ const Dashboard = () => {
                 <card.icon size={20} className={card.color} />
               </div>
               <div>
-                <p className="text-xl md:text-2xl font-bold text-[#1a1a1a]">{card.value}</p>
+                <p className="text-xl md:text-2xl font-bold text-[#1a1a1a]">
+                  {isLoading ? <span className="text-gray-300 text-base">…</span> : card.value}
+                </p>
                 <p className="text-[10px] md:text-xs text-gray-400 mt-0.5 md:mt-0">{card.label}</p>
               </div>
             </div>
@@ -63,23 +97,27 @@ const Dashboard = () => {
           <div className="bg-white rounded-2xl p-6 border border-[#f0ece8] shadow-sm">
             <h3 className="text-base font-semibold text-[#1a1a1a] mb-4">Pending Assignments</h3>
             <div className="space-y-0">
-              {pendingAssignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-[#1a1a1a]">{assignment.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{assignment.subject}</p>
+              {pendingAssignments.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">No pending assignments 🎉</p>
+              ) : (
+                pendingAssignments.map((assignment) => (
+                  <div key={assignment._id || assignment.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-[#1a1a1a]">{assignment.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{assignment.subject}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                        <Calendar size={12} />
+                        {formatDate(assignment.dueDate)}
+                      </span>
+                      <span className="text-[10px] bg-orange-100 text-[#e8612a] px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
+                        Pending
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <Calendar size={12} />
-                      {formatDate(assignment.dueDate)}
-                    </span>
-                    <span className="text-[10px] bg-orange-100 text-[#e8612a] px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
-                      Pending
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -87,15 +125,19 @@ const Dashboard = () => {
           <div className="bg-white rounded-2xl p-6 border border-[#f0ece8] shadow-sm">
             <h3 className="text-base font-semibold text-[#1a1a1a] mb-4">Recent Notifications</h3>
             <div className="space-y-0">
-              {recentNotifications.map((notif) => (
-                <div key={notif.id} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${notif.unread ? "bg-[#e8612a]" : "bg-gray-200"}`} />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-700">{notif.message}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{notif.time}</p>
+              {recentNotifications.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">No notifications yet</p>
+              ) : (
+                recentNotifications.map((notif) => (
+                  <div key={notif._id || notif.id} className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!notif.isRead ? "bg-[#e8612a]" : "bg-gray-200"}`} />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-700">{notif.message}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{notif.time || notif.createdAt}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -105,3 +147,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
